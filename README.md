@@ -11,4 +11,9 @@ The topic is: wemo_monitor_washingmachine
 
 The ip address of your device must be changed to your needs.
 
+To build:
+use dep tool for more info: https://github.com/golang/dep
+dep ensure
+go run main.go
+
 
