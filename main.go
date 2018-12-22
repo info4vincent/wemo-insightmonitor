@@ -2,27 +2,26 @@ package main
 
 import (
 	"fmt"
-	"github.com/danward79/go.wemo"
-	"golang.org/x/net/context"
-	"time"
 	"log"
-	"github.com/bitly/go-nsq"
+	"time"
 
+	nsq "github.com/bitly/go-nsq"
+	wemo "github.com/danward79/go.wemo"
+	"golang.org/x/net/context"
 )
 
 type WashingMachine string
 
 const (
-	Idle	  WashingMachine = "idle"
-	Washing   WashingMachine = "washing"
-	Finished  WashingMachine = "finished"
+	Idle     WashingMachine = "idle"
+	Washing  WashingMachine = "washing"
+	Finished WashingMachine = "finished"
 )
 
 type WashingMachineInsightThreshhold int
 
-
 const (
-	startedWashing WashingMachineInsightThreshhold = 100000
+	startedWashing  WashingMachineInsightThreshhold = 100000
 	finishedWashing WashingMachineInsightThreshhold = 100
 )
 
@@ -32,7 +31,7 @@ func main() {
 
 	// you can either create a device directly OR use the
 	// #Discover/#DiscoverAll methods to find devices
-	device := &wemo.Device{Host: "192.168.2.14:49153"}
+	device := &wemo.Device{Host: "192.168.2.3:49153"}
 
 	ctx := context.Background()
 
@@ -59,10 +58,10 @@ func main() {
 			case newPower := <-powerChangedChan:
 				fmt.Printf("wemo:power:%v\n", newPower)
 				powerMeasurement := WashingMachineInsightThreshhold(newPower)
-				if(washingMachine == Idle && powerMeasurement > startedWashing) {
+				if washingMachine == Idle && powerMeasurement > startedWashing {
 					washingMachine = Washing
 					publishToNsq("wemo:started_washing")
-				} else if (washingMachine == Washing && powerMeasurement < finishedWashing) {
+				} else if washingMachine == Washing && powerMeasurement < finishedWashing {
 					washingMachine = Finished
 					publishToNsq("wemo:finished_washing")
 				}
@@ -75,11 +74,15 @@ func main() {
 		select {
 		case <-tickChan:
 			insightParams = device.GetInsightParams()
-			fmt.Printf("New insights '%v' \n", insightParams.Power)
-			if insightParams.Power != initPower {
-				initPower = insightParams.Power
-				powerChangedChan <- insightParams.Power
+			if insightParams != nil {
+				fmt.Printf("New insights '%v' \n", insightParams.Power)
+				if insightParams.Power != initPower {
+					initPower = insightParams.Power
+					powerChangedChan <- insightParams.Power
+				} else {
+				}
 			} else {
+				log.Panic("Could not fetch device data")
 			}
 		case <-powerChangedChan:
 			fmt.Printf("Power changed: '%v'\n", initPower)
@@ -91,7 +94,7 @@ func main() {
 
 func publishToNsq(msg string) {
 	config := nsq.NewConfig()
-	w, _ := nsq.NewProducer("192.168.2.11:4150", config)
+	w, _ := nsq.NewProducer("192.168.2.17:4150", config)
 	err := w.Publish("wemo_monitor_washingmachine", []byte(msg))
 	if err != nil {
 		log.Panic("Could not connect")
