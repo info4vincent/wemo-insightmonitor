@@ -82,7 +82,7 @@ func main() {
 				} else {
 				}
 			} else {
-				log.Panic("Could not fetch device data")
+				log.Println("Could not fetch device data")
 			}
 		case <-powerChangedChan:
 			fmt.Printf("Power changed: '%v'\n", initPower)
